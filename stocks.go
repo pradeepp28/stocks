@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"path"
+	"reflect"
 	"regexp"
 	"time"
 )
@@ -49,18 +49,10 @@ func (s server) Get(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Error! Couldn't read stocks url")
 		return
 	}
-
-	b, err := httpGet(urlString)
-	if err != nil {
+	var seResp stockExchangeResponse
+	if err := httpGet(urlString, &seResp); err != nil {
 		log.Printf("Failed to get data from stock exchange, error: %v", err)
 		fmt.Fprint(w, "Error! Failed to get data from stock exchange")
-		return
-	}
-
-	var seResp stockExchangeResponse
-	if err := json.Unmarshal(b, &seResp); err != nil {
-		log.Printf("failed to unmarshal response from stock exchange, error: %v", err)
-		fmt.Fprint(w, "Error! Data from stock exchange is corrupted")
 		return
 	}
 
@@ -111,23 +103,26 @@ func stockExchangeURL(symbol string) (string, error) {
 	return u.String(), nil
 }
 
-func httpGet(url string) ([]byte, error) {
+func httpGet(url string, resp interface{}) error {
+	if reflect.TypeOf(resp).Elem().Kind() != reflect.Struct || reflect.TypeOf(resp).Kind() != reflect.Ptr {
+		return errors.New("resp should be of type pointer to struct")
+	}
+
 	hr, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
 	httpClient := &http.Client{Timeout: clientTimeout}
 	eResp, err := httpClient.Do(hr)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	b, err := ioutil.ReadAll(eResp.Body)
-	if err != nil {
-		return nil, err
+	defer eResp.Body.Close()
+	if err := json.NewDecoder(eResp.Body).Decode(resp); err != nil {
+		return err
 	}
-
-	return b, nil
+	return nil
 }
 
 func formatResponse(stockExchange string, datas []data) map[string]respData {

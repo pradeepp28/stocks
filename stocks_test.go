@@ -34,7 +34,7 @@ func TestParseSymbol(t *testing.T) {
 
 func TestStockExchangeURL(t *testing.T) {
 
-	testData := []string{"AAPL", "HSBA.L"}
+	testData := []string{"AAPL", "HSBA.L", ""}
 
 	for _, d := range testData {
 
@@ -68,9 +68,18 @@ func TestFormatResponse(t *testing.T) {
 	expectedResp := map[string]respData{
 		"NASDAQ": rd,
 	}
-	resp1 := formatResponse("", ds)
-	assert.Equal(t, reflect.DeepEqual(expectedResp, resp1), true, "Response doesn't matcg expected response")
 
-	resp2 := formatResponse("NASDAQ", ds)
-	assert.Equal(t, reflect.DeepEqual(expectedResp, resp2), true, "Response doesn't matcg expected response")
+	testData := []struct {
+		se           string
+		expectedResp map[string]respData
+	}{
+		{se: "", expectedResp: expectedResp},
+		{se: "NASDAQ", expectedResp: expectedResp},
+		{se: "AAA", expectedResp: make(map[string]respData)},
+	}
+
+	for _, d := range testData {
+		resp := formatResponse(d.se, ds)
+		assert.Equal(t, reflect.DeepEqual(d.expectedResp, resp), true, "Response doesn't matcg expected response")
+	}
 }
