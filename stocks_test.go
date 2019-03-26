@@ -34,19 +34,26 @@ func TestParseSymbol(t *testing.T) {
 
 func TestStockExchangeURL(t *testing.T) {
 
-	testData := []string{"AAPL", "HSBA.L", ""}
+	testData := []struct {
+		symbol string
+		token  string
+	}{
+		{symbol: "AAPL", token: "token1"},
+		{symbol: "HSBA.L", token: "token2"},
+		{symbol: "", token: ""},
+	}
 
 	for _, d := range testData {
 
-		if seURL, err := stockExchangeURL(d); err != nil {
+		if seURL, err := stockExchangeURL(d.symbol, d.token); err != nil {
 			t.Error("Failed to create stock exchange url")
 		} else {
 			u, err := url.Parse(seURL)
 			if err != nil {
 				t.Error(err)
 			} else {
-				assert.Equal(t, u.Query().Get("symbol"), d, "Query doesn't have expected symbol")
-				assert.Equal(t, u.Query().Get("api_token"), apiToken, "Query doesn't have expected api_token")
+				assert.Equal(t, u.Query().Get("symbol"), d.symbol, "Query doesn't have expected symbol")
+				assert.Equal(t, u.Query().Get("api_token"), d.token, "Query doesn't have expected api_token")
 			}
 		}
 	}
@@ -80,6 +87,6 @@ func TestFormatResponse(t *testing.T) {
 
 	for _, d := range testData {
 		resp := formatResponse(d.se, ds)
-		assert.Equal(t, reflect.DeepEqual(d.expectedResp, resp), true, "Response doesn't matcg expected response")
+		assert.Equal(t, reflect.DeepEqual(d.expectedResp, resp), true, "Response doesn't match expected response")
 	}
 }
