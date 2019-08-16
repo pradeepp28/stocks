@@ -2,11 +2,13 @@ package stocks
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"reflect"
 	"testing"
 
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseSymbol(t *testing.T) {
@@ -89,4 +91,38 @@ func TestFormatResponse(t *testing.T) {
 		resp := formatResponse(d.se, ds)
 		assert.Equal(t, reflect.DeepEqual(d.expectedResp, resp), true, "Response doesn't match expected response")
 	}
+}
+
+func TestHttpGet(t *testing.T) {
+	type foo struct {
+		Data string `json:"data"`
+	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"data": "foo-data"}`))
+	}))
+
+	testCases := []struct {
+		name   string
+		output foo
+		error  bool
+	}{
+		{
+			name:   "Should return expected output",
+			output: foo{Data: "foo-data"},
+			error:  false,
+		},
+	}
+
+	for _, tc := range testCases {
+		var f foo
+		err := httpGet(ts.URL, &f)
+		if tc.error {
+			assert.Error(t, err, "Expect httpGet() to return error")
+		} else {
+			assert.NoError(t, err, "Expect httpGet() to not return error")
+			assert.Equal(t, tc.output, f, "Expect httpGet() to load expected data")
+		}
+	}
+
 }
